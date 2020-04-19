@@ -23,6 +23,36 @@ DB_NAME = 'country_song.sqlite'
 app = Flask(__name__)
 
 
+def get_country():
+	country_full_list = []
+	country_abb_list = []
+	country_dict = {}
+	base_url_scrape = 'https://laendercode.net/en/2-letter-list.html'
+	headers = {
+		'User-Agent': 'UMSI 507 Course Final Project',
+		'From': 'crisscy@umich.edu', ## please replace with your own email
+		'Course-Info': 'https://si.umich.edu/programs/courses/507'
+	}
+	response = scrape_request(base_url_scrape, headers, CACHE_DICT)
+	soup = BeautifulSoup(response, 'html.parser')
+	tr = soup.find_all('tr')
+
+	for i in tr[1:]:
+		try:
+			country_key = i.find_all('a')[1].text.strip().lower()
+		except:
+			pass
+		try:
+			country_abbre = i.find(class_='margin-clear').text.strip().lower()
+		except:
+			pass
+		country_dict[country_key] = country_abbre
+		country_full_list.append(country_key)
+		country_abb_list.append(country_abbre)
+	return country_full_list, country_abb_list, country_dict
+
+
+
 def get_country_charts(country_list):
 	track_dict = {}
 
@@ -71,52 +101,35 @@ def get_lyrics(track_dict):
 			track_dict[i][j]['lyrics_language'] = lyrics_language
 	return track_dict	
 
-def get_country():
-	country_full_list = []
-	country_abb_list = []
-	country_dict = {}
-	base_url_scrape = 'https://laendercode.net/en/2-letter-list.html'
-	headers = {
-		'User-Agent': 'UMSI 507 Course Final Project',
-		'From': 'crisscy@umich.edu', ## please replace with your own email
-		'Course-Info': 'https://si.umich.edu/programs/courses/507'
-	}
-	response = scrape_request(base_url_scrape, headers, CACHE_DICT)
-	soup = BeautifulSoup(response, 'html.parser')
-	tr = soup.find_all('tr')
-
-	for i in tr[1:]:
-		try:
-			country_key = i.find_all('a')[1].text.strip().lower()
-		except:
-			pass
-		try:
-			country_abbre = i.find(class_='margin-clear').text.strip().lower()
-		except:
-			pass
-		country_dict[country_key] = country_abbre
-		country_full_list.append(country_key)
-		country_abb_list.append(country_abbre)
-	return country_full_list, country_abb_list, country_dict
+def get_yt_id(track_dict):
+	for i, v in track_dict.items():
+		for j, w in v.items():
+			track_name = w['track_name']
+			artist_name = w['artist_name']
+			searchq = track_name + ' ' + artist_name
+			uni_id = "youtube_search_que_" + searchq
+			results = request_youtube('get_id', searchq, uni_id, CACHE_DICT)
+			results = json.loads(results)
+			for k in results['items']:
+				track_dict[i][j]['yt_videoID'] = k['id']['videoId']
+				track_dict[i][j]['yt_videoTitle'] = k['snippet']['title']
+				track_dict[i][j]['yt_url'] = 'https://www.youtube.com/watch?v='+ k['id']['videoId']
+				
+	return track_dict
 
 
-def get_yt_id(searchq, cache):
-	uni_id = "youtube_search_que_" + searchq
-	results = request_youtube('get_id', searchq, uni_id, CACHE_DICT)
-	results = json.loads(results)
-	video_snippet = {}
-	for i in results['items']:
-		video_snippet['videoId'] = (i['id']['videoId'])
-		video_snippet['videoTitle'] = (i['snippet']['title'])
-	return video_snippet
+def get_yt_stats(track_dict):
+	for i, v in track_dict.items():
+		for j, w in v.items():
+			uni_id = w['yt_videoID'] 
+			results = request_youtube('get_stats', w['yt_videoID'] , uni_id, CACHE_DICT)
+			results = json.loads(results)
+			track_dict[i][j]['yt_view_counts'] = results['items'][0]['statistics']['viewCount']
+			track_dict[i][j]['yt_like_counts'] = results['items'][0]['statistics']['likeCount']
+			track_dict[i][j]['yt_dislike_counts'] = results['items'][0]['statistics']['dislikeCount']
+			track_dict[i][j]['yt_comment_counts'] = results['items'][0]['statistics']['commentCount']
 
-
-def get_yt_stats(video_id='qgmXPCX4VzU'):
-	uni_id = "youtube_stats_" + video_id
-	results = request_youtube('get_stats', video_id, uni_id, CACHE_DICT)
-	results = json.loads(results)
-	stats = results["items"][0]["statistics"]
-	return stats
+	return track_dict
 
 
 def request_youtube(method, params, uni_id, cache):
@@ -235,15 +248,19 @@ def creat_db():
 
 	create_countries_sql = '''
 		CREATE TABLE IF NOT EXISTS "Countries" (
-			'Id' INTEGER PRIMARY KEY,
-			'Countries' TEXT NOT NULL
+			'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
+			'Countries' TEXT NOT NULL,
+			'alpha2' TEXT NOT NULL
 
 		)
 	'''
 	create_videos_sql = '''
-		CREATE TABLE IF NO EXISTS "Videos"(
-			'Id' INTEGER PRIMARY KEY,
-			'CountryId' INTEGER NOT NULL,
+		CREATE TABLE IF NOT EXISTS "Videos"(
+			'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
+			'Title' TEXT NOT NULL,
+			'Artist_Name' TEXT NOT NULL,
+			'Album' TEXT NOT NULL,
+			'Country' INTEGER NOT NULL,
 			'Lyrics' TEXT NOT NULL,
 			'Url' TEXT NOT NULL,
 			'Views' INTEGER NOT NULL,
@@ -260,7 +277,36 @@ def creat_db():
 	conn.commit()
 	conn.close()
 
+def load_countries(country_dict):
+	insert_sql = '''
+	INSERT INTO Countries
+	VALUES(NULL, ?, ?)
+	'''
+	conn = sqlite3.connect(DB_NAME)
+	cur = conn.cursor()
 
+	for i, v in country_dict.items():
+		cur.execute(insert_sql,
+			[i, v]
+			)
+	conn.commit()
+	conn.close()
+	
+def load_videos(track_dict):
+	insert_sql = '''
+	INSERT INTO Videos
+	VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	'''
+	conn = sqlite3.connect(DB_NAME)
+	cur = conn.cursor()
+
+	for i, v in track_dict.items():
+		for j, w in v.items():
+			cur.execute(insert_sql,
+				[w['track_name'], w['artist_name'], w['album_name'], i, w['lyrics'], w['yt_url'], w['yt_view_counts'], w['yt_like_counts'], w['yt_dislike_counts'], w['yt_comment_counts']]
+				)
+	conn.commit()
+	conn.close()
 
 @app.route('/')
 def index():
@@ -274,9 +320,10 @@ if __name__ == '__main__':
 	country_abb_list = get_country()[1]
 	country_dict = get_country()[2]
 	track_dict = get_country_charts(['jp','tw'])
-	# print(track_dict)
-	# print('-'*30)
 	track_dict = get_lyrics(track_dict)
-	print(track_dict)
-
+	track_dict = get_yt_id(track_dict)
+	track_dict = get_yt_stats(track_dict)
+	creat_db()
+	load_countries(country_dict)
+	load_videos(track_dict)
 
