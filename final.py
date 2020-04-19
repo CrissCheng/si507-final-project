@@ -260,7 +260,7 @@ def creat_db():
 			'Title' TEXT NOT NULL,
 			'Artist_Name' TEXT NOT NULL,
 			'Album' TEXT NOT NULL,
-			'Country' INTEGER NOT NULL,
+			'CountryId' INTEGER NOT NULL,
 			'Lyrics' TEXT NOT NULL,
 			'Url' TEXT NOT NULL,
 			'Views' INTEGER NOT NULL,
@@ -293,17 +293,28 @@ def load_countries(country_dict):
 	conn.close()
 	
 def load_videos(track_dict):
-	insert_sql = '''
-	INSERT INTO Videos
-	VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	select_coutnry_id_sql = '''
+	SELECT Id FROM Countries
+	WHERE alpha2 = ?
 	'''
 	conn = sqlite3.connect(DB_NAME)
 	cur = conn.cursor()
 
+	insert_sql = '''
+	INSERT INTO Videos
+	VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	'''
+
 	for i, v in track_dict.items():
+		cur.execute(select_coutnry_id_sql, [i])
+		res = cur.fetchone()
+		country_location_id = None
+		if res is not None:
+			country_location_id = res[0]
+
 		for j, w in v.items():
 			cur.execute(insert_sql,
-				[w['track_name'], w['artist_name'], w['album_name'], i, w['lyrics'], w['yt_url'], w['yt_view_counts'], w['yt_like_counts'], w['yt_dislike_counts'], w['yt_comment_counts']]
+				[w['track_name'], w['artist_name'], w['album_name'], country_location_id, w['lyrics'], w['yt_url'], w['yt_view_counts'], w['yt_like_counts'], w['yt_dislike_counts'], w['yt_comment_counts']]
 				)
 	conn.commit()
 	conn.close()
@@ -319,7 +330,7 @@ if __name__ == '__main__':
 	country_full_list = get_country()[0]
 	country_abb_list = get_country()[1]
 	country_dict = get_country()[2]
-	track_dict = get_country_charts(['jp','tw'])
+	track_dict = get_country_charts(country_abb_list)
 	track_dict = get_lyrics(track_dict)
 	track_dict = get_yt_id(track_dict)
 	track_dict = get_yt_stats(track_dict)
