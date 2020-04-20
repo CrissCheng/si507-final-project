@@ -15,10 +15,7 @@ google_api_key = secrets.GOOGLE_API_KEY
 musicmatch_api_key = secrets.MUSICMATCH_API_KEY
 CACHE_FILE_NAME = 'cache.json'
 CACHE_DICT = {}
-country_list = []
-country_dict = {}
 DB_NAME = 'country_song.sqlite'
-app = Flask(__name__)
 
 
 def get_all_country():
@@ -49,49 +46,13 @@ def get_all_country():
 		country_abb_list.append(country_abbre)
 	return country_full_list, country_abb_list, country_dict
 
-def get_top_100_countries():
-	url = 'https://www.indexmundi.com/g/r.aspx?t=100&v=65'
-	headers = {
-		'User-Agent': 'UMSI 507 Course Final Project',
-		'From': 'crisscy@umich.edu', 
-		'Course-Info': 'https://si.umich.edu/programs/courses/507'
-	}
-	response = scrape_request(url, headers, CACHE_DICT)
-	soup = BeautifulSoup(response, 'html.parser')
-	tbody = soup.find('tbody')
-	td = tbody.find_all('td')
-	top_country_list = []
-
-	for a in td:
-		try:
-			top_country_list.append(a.find('a', href=True).text.lower())
-		except:
-			pass
-	top_country_list = [c.replace('korea, south', 'south korea') for c in top_country_list]		
-	top_country_list.remove('burma')
-	top_country_list.remove("cote d'ivoire")
-	top_country_list.remove('macau')
-	top_country_list.remove('china')
-	top_country_list = top_country_list[1:-2]
-	return top_country_list
-
-def match_top_country_abb(top_country_list, country_full_dict):
-	top_country_dict = {}
-	for i in top_country_list:
-		top_country_dict[i] = country_full_dict[i]
-	return top_country_dict
 
 
 def country_initialization():
 	country_full_list = get_all_country()[0]
 	country_full_abb_list = get_all_country()[1]
 	country_full_dict = get_all_country()[2]
-	top_country_list = get_top_100_countries()
-	top_country_dict = match_top_country_abb(top_country_list, country_full_dict)
-	top_country_abb_list =[]
-	for i in top_country_dict.values():
-		top_country_abb_list.append(i)
-	return top_country_abb_list, top_country_dict
+	return country_full_abb_list, country_full_dict
 
 
 def get_country_charts(country_list):
@@ -389,11 +350,11 @@ def load_videos(track_dict):
 
 if __name__ == '__main__':  
 	CACHE_DICT = load_cache()
-	top_country_abb_list = country_initialization()[0]
-	top_country_dict = country_initialization()[1]
-	track_dict =get_data_initializaton(top_country_abb_list)
+	country_full_abb_list = country_initialization()[0]
+	country_full_dict = country_initialization()[1]
+	track_dict = get_data_initializaton(country_full_abb_list)
 	creat_db()
-	load_countries(top_country_dict)
+	load_countries(country_full_dict)
 	load_videos(track_dict)
 	
 	
