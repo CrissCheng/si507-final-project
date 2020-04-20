@@ -7,9 +7,7 @@ import requests
 import secrets 
 from bs4 import BeautifulSoup
 from apiclient.discovery import build
-from flask import Flask, render_template, request
 import sqlite3
-import plotly.graph_objects as go
 
 
 #global variables
@@ -23,14 +21,14 @@ DB_NAME = 'country_song.sqlite'
 app = Flask(__name__)
 
 
-def get_country():
+def get_all_country():
 	country_full_list = []
 	country_abb_list = []
 	country_dict = {}
 	base_url_scrape = 'https://laendercode.net/en/2-letter-list.html'
 	headers = {
 		'User-Agent': 'UMSI 507 Course Final Project',
-		'From': 'crisscy@umich.edu', ## please replace with your own email
+		'From': 'crisscy@umich.edu', 
 		'Course-Info': 'https://si.umich.edu/programs/courses/507'
 	}
 	response = scrape_request(base_url_scrape, headers, CACHE_DICT)
@@ -51,6 +49,49 @@ def get_country():
 		country_abb_list.append(country_abbre)
 	return country_full_list, country_abb_list, country_dict
 
+def get_top_100_countries():
+	url = 'https://www.indexmundi.com/g/r.aspx?t=100&v=65'
+	headers = {
+		'User-Agent': 'UMSI 507 Course Final Project',
+		'From': 'crisscy@umich.edu', 
+		'Course-Info': 'https://si.umich.edu/programs/courses/507'
+	}
+	response = scrape_request(url, headers, CACHE_DICT)
+	soup = BeautifulSoup(response, 'html.parser')
+	tbody = soup.find('tbody')
+	td = tbody.find_all('td')
+	top_country_list = []
+
+	for a in td:
+		try:
+			top_country_list.append(a.find('a', href=True).text.lower())
+		except:
+			pass
+	top_country_list = [c.replace('korea, south', 'south korea') for c in top_country_list]		
+	top_country_list.remove('burma')
+	top_country_list.remove("cote d'ivoire")
+	top_country_list.remove('macau')
+	top_country_list.remove('china')
+	top_country_list = top_country_list[1:-2]
+	return top_country_list
+
+def match_top_country_abb(top_country_list, country_full_dict):
+	top_country_dict = {}
+	for i in top_country_list:
+		top_country_dict[i] = country_full_dict[i]
+	return top_country_dict
+
+
+def country_initialization():
+	country_full_list = get_all_country()[0]
+	country_full_abb_list = get_all_country()[1]
+	country_full_dict = get_all_country()[2]
+	top_country_list = get_top_100_countries()
+	top_country_dict = match_top_country_abb(top_country_list, country_full_dict)
+	top_country_abb_list =[]
+	for i in top_country_dict.values():
+		top_country_abb_list.append(i)
+	return top_country_abb_list, top_country_dict
 
 
 def get_country_charts(country_list):
@@ -111,24 +152,46 @@ def get_yt_id(track_dict):
 			results = request_youtube('get_id', searchq, uni_id, CACHE_DICT)
 			results = json.loads(results)
 			for k in results['items']:
-				track_dict[i][j]['yt_videoID'] = k['id']['videoId']
-				track_dict[i][j]['yt_videoTitle'] = k['snippet']['title']
-				track_dict[i][j]['yt_url'] = 'https://www.youtube.com/watch?v='+ k['id']['videoId']
-				
+				try:
+					track_dict[i][j]['yt_videoID'] = k['id']['videoId']
+				except:
+					track_dict[i][j]['yt_videoID'] = None
+				try:
+					track_dict[i][j]['yt_videoTitle'] = k['snippet']['title']
+				except:
+					track_dict[i][j]['yt_videoTitle'] = None
+				try:
+					track_dict[i][j]['yt_url'] = 'https://www.youtube.com/watch?v='+ k['id']['videoId']
+				except:
+					track_dict[i][j]['yt_url'] = None
+
 	return track_dict
 
 
 def get_yt_stats(track_dict):
 	for i, v in track_dict.items():
 		for j, w in v.items():
-			uni_id = w['yt_videoID'] 
-			results = request_youtube('get_stats', w['yt_videoID'] , uni_id, CACHE_DICT)
-			results = json.loads(results)
-			track_dict[i][j]['yt_view_counts'] = results['items'][0]['statistics']['viewCount']
-			track_dict[i][j]['yt_like_counts'] = results['items'][0]['statistics']['likeCount']
-			track_dict[i][j]['yt_dislike_counts'] = results['items'][0]['statistics']['dislikeCount']
-			track_dict[i][j]['yt_comment_counts'] = results['items'][0]['statistics']['commentCount']
+			try:
+				uni_id = w['yt_videoID'] 
+				results = request_youtube('get_stats', w['yt_videoID'] , uni_id, CACHE_DICT)
+				results = json.loads(results)
+				track_dict[i][j]['yt_view_counts'] = results['items'][0]['statistics']['viewCount']
+				track_dict[i][j]['yt_like_counts'] = results['items'][0]['statistics']['likeCount']
+				track_dict[i][j]['yt_dislike_counts'] = results['items'][0]['statistics']['dislikeCount']
+				track_dict[i][j]['yt_comment_counts'] = results['items'][0]['statistics']['commentCount']
+			except:
+				track_dict[i][j]['yt_view_counts'] = None
+				track_dict[i][j]['yt_like_counts'] = None
+				track_dict[i][j]['yt_dislike_counts'] = None
+				track_dict[i][j]['yt_comment_counts'] = None
+	return track_dict
 
+def get_data_initializaton(top_country_abb_list):
+	track_dict ={}
+	track_dict = get_country_charts(top_country_abb_list)
+	track_dict = get_lyrics(track_dict)
+	track_dict = get_yt_id(track_dict)
+	track_dict = get_yt_stats(track_dict)
 	return track_dict
 
 
@@ -152,7 +215,7 @@ def request_youtube(method, params, uni_id, cache):
 		else:
 			print("Fetching")
 			youtube = build('youtube','v3', developerKey = google_api_key)
-			req = youtube.videos().list(part='snippet, contentDetails, statistics', id=params)
+			req = youtube.videos().list(part='snippet, statistics', id=params)
 			res = req.execute()
 			cache[uni_id] = json.dumps(res)
 			save_cache(cache)
@@ -248,25 +311,25 @@ def creat_db():
 
 	create_countries_sql = '''
 		CREATE TABLE IF NOT EXISTS "Countries" (
-			'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
-			'Countries' TEXT NOT NULL,
+			'id' INTEGER PRIMARY KEY AUTOINCREMENT,
+			'countries' TEXT NOT NULL,
 			'alpha2' TEXT NOT NULL
 
 		)
 	'''
 	create_videos_sql = '''
 		CREATE TABLE IF NOT EXISTS "Videos"(
-			'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
-			'Title' TEXT NOT NULL,
-			'Artist_Name' TEXT NOT NULL,
-			'Album' TEXT NOT NULL,
-			'CountryId' INTEGER NOT NULL,
-			'Lyrics' TEXT NOT NULL,
-			'Url' TEXT NOT NULL,
-			'Views' INTEGER NOT NULL,
-			'Likes' INTEGER NOT NULL,
-			'Dislikes' INTEGER NOT NULL,
-			'commentCount' INTEGER NOT NULL
+			'id' INTEGER PRIMARY KEY AUTOINCREMENT,
+			'title' TEXT NOT NULL,
+			'artist_name' TEXT NOT NULL,
+			'album' TEXT NOT NULL,
+			'countryId' INTEGER NOT NULL,
+			'lyrics' TEXT NOT NULL,
+			'url' TEXT,
+			'views' INTEGER,
+			'likes' INTEGER,
+			'dislikes' INTEGER,
+			'comment_count' INTEGER
 
 		)
 	'''
@@ -313,28 +376,24 @@ def load_videos(track_dict):
 			country_location_id = res[0]
 
 		for j, w in v.items():
-			cur.execute(insert_sql,
-				[w['track_name'], w['artist_name'], w['album_name'], country_location_id, w['lyrics'], w['yt_url'], w['yt_view_counts'], w['yt_like_counts'], w['yt_dislike_counts'], w['yt_comment_counts']]
-				)
+			try:
+				cur.execute(insert_sql,
+					[w['track_name'], w['artist_name'], w['album_name'], country_location_id, w['lyrics'], w['yt_url'], w['yt_view_counts'], w['yt_like_counts'], w['yt_dislike_counts'], w['yt_comment_counts']]
+					)
+			except:
+				pass
 	conn.commit()
 	conn.close()
 
-@app.route('/')
-def index():
-	country_list = country_list
-	return render_template('index.html')
+
 
 if __name__ == '__main__':  
 	CACHE_DICT = load_cache()
-	# app.run(debug=True)
-	country_full_list = get_country()[0]
-	country_abb_list = get_country()[1]
-	country_dict = get_country()[2]
-	track_dict = get_country_charts(country_abb_list)
-	track_dict = get_lyrics(track_dict)
-	track_dict = get_yt_id(track_dict)
-	track_dict = get_yt_stats(track_dict)
+	top_country_abb_list = country_initialization()[0]
+	top_country_dict = country_initialization()[1]
+	track_dict =get_data_initializaton(top_country_abb_list)
 	creat_db()
-	load_countries(country_dict)
+	load_countries(top_country_dict)
 	load_videos(track_dict)
-
+	
+	
