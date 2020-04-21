@@ -31,7 +31,7 @@ def get_top_songs(country):
 	conn = sqlite3.connect('country_song.sqlite')
 	cur = conn.cursor()
 	q = f'''
-		SELECT c.countries, v.title, v.artist_Name, v.album, v.url
+		SELECT c.countries, v.id, v.title, v.artist_Name, v.album, v.url
 		FROM Countries as c
 		JOIN Videos as v
 		ON v.CountryId = c.Id
@@ -40,6 +40,17 @@ def get_top_songs(country):
 	results = cur.execute(q).fetchall()
 	conn.close()
 	return results
+def get_single_song(song_id):
+	conn = sqlite3.connect('country_song.sqlite')
+	cur = conn.cursor()
+	q = f'''
+		SELECT v.id, v.title, v.lyrics, v.embed_url
+		FROM Videos as v
+		WHERE id = '{song_id}'
+		'''
+	results = cur.execute(q).fetchall()
+	conn.close()
+	return results	
 
 @app.route('/')
 def index():
@@ -53,12 +64,24 @@ def index():
 	### populating lists in html
 	return render_template('index.html', countries=country_list)
 
-@app.route('/songs/<country>')
+@app.route('/top_songs/<country>')
 def top_songs(country):
 	top_song_list = get_top_songs(country)
 	return render_template('top_song.html', country=country, top_song_list=top_song_list)
 
+@app.route('/top_songs/<country>/compare')
+def top_congs_compare(country):
+	top_song_list = get_top_songs(country)
+	return render_template('top_songs_compare.html', country=country, top_song_list=top_song_list)
 
+@app.route('/single_song/<country>/<song_id>/lyric')
+def single_song_lyric(country, song_id):
+	single_song = get_single_song(int(song_id))
+	return render_template('single_song_lyric.html',song_name=single_song[0][1],lyric=single_song[0][2], embed_url=single_song[0][3], country=country)
+
+@app.route('/top_songs/<country>/results')
+def song_compare(country):
+	return('top_songs_compare_results')
 
 if __name__ == '__main__':
 	app.run(debug=True)

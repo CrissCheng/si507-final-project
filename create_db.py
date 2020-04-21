@@ -125,7 +125,10 @@ def get_yt_id(track_dict):
 					track_dict[i][j]['yt_url'] = 'https://www.youtube.com/watch?v='+ k['id']['videoId']
 				except:
 					track_dict[i][j]['yt_url'] = None
-
+				try:
+					track_dict[i][j]['yt_embed_url'] = 'https://www.youtube.com/embed/'+ k['id']['videoId']
+				except:
+					track_dict[i][j]['yt_embed_url'] = None
 	return track_dict
 
 
@@ -287,6 +290,7 @@ def creat_db():
 			'countryId' INTEGER NOT NULL,
 			'lyrics' TEXT NOT NULL,
 			'url' TEXT,
+			'embed_url' TEXT,
 			'views' INTEGER,
 			'likes' INTEGER,
 			'dislikes' INTEGER,
@@ -326,7 +330,7 @@ def load_videos(track_dict):
 
 	insert_sql = '''
 	INSERT INTO Videos
-	VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	'''
 
 	for i, v in track_dict.items():
@@ -339,7 +343,7 @@ def load_videos(track_dict):
 		for j, w in v.items():
 			try:
 				cur.execute(insert_sql,
-					[w['track_name'], w['artist_name'], w['album_name'], country_location_id, w['lyrics'], w['yt_url'], w['yt_view_counts'], w['yt_like_counts'], w['yt_dislike_counts'], w['yt_comment_counts']]
+					[w['track_name'], w['artist_name'], w['album_name'], country_location_id, w['lyrics'], w['yt_url'], w['yt_embed_url'], w['yt_view_counts'], w['yt_like_counts'], w['yt_dislike_counts'], w['yt_comment_counts']]
 					)
 			except:
 				pass

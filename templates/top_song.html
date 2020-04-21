@@ -16,10 +16,12 @@
 	<h3>These are the top 5 songs in {{country}}</h3>
 	<table>
 		<tr>
+			<th>Id</th>
 			<th>Song</th>
 			<th>Artist</th>
 			<th>Album</th>
 			<th>Youtube url</th>
+			<th>See Lyrics?</th>
 		</tr>
 		{% for song in top_song_list %}
 			<tr>
@@ -27,14 +29,18 @@
 					<td>{{song[1]}}</td>
 					<td>{{song[2]}}</td>
 					<td>{{song[3]}}</td>
-					<td><a href="{{song[4]}}">{{song[4]}}</a></td>
-				
+					<td>{{song[4]}}</td>
+					<td><a href="{{song[5]}}">{{song[5]}}</a></td>
+					<td><a href="/single_song/{{country}}/{{song[1]}}/lyric">View lyrics</a> </td>
 			</tr>
 		{% endfor %}
 
-
 	</table>
 	<br>
+	<h4>You can also choose to view some data:<h4>
+	<ol>
+		<li><a href="/top_songs/{{country}}/compare">View stats of these songs</a></li>
+	</ol>
 	Return <a href="/">Home</a>
 
 
