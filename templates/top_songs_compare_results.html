@@ -1,13 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF8"/>
-    <title>Top Songs in Different Countries</title>
+	<meta charset="UTF8"/>
+	<title>Top Songs in Different Countries</title>
+	<style>
+	table, th, td {
+		border: 1px solid black;
+		border-collapse: collapse;
+		padding: 5px;
+	}
+	</style>
 </head>
 <body>
-    <h1>Here are your results!</h1>
-    <table>
+	<h1>Here are your results!</h1>
 
-    </table>
+	<table>
+		<tr>
+			<th>id</th>
+			<th>title</th>
+
+			{% if check_view == True %}
+				<th>views</th>
+			{% endif %}
+
+			{% if check_like == True %}
+				<th>likes</th>
+			{% endif %}
+
+			{% if check_dislike == True %}
+				<th>dislikes</th>
+			{% endif %}
+
+			{% if check_comment == True %}
+				<th>comments</th>
+			{% endif %}
+
+		</tr>
+		{% for song in song_stats %}
+		<tr>
+				<th>{{song[0]}}</th>
+				<th>{{song[1]}}</th>
+				<th>{{song[2]}}</th>
+				{% if (song[3]) %}
+				<th>{{song[3]}}</th>
+				{% endif %}
+				{% if song[4] %}
+				<th>{{song[4]}}</th>
+				{% endif %}
+				{% if (song[5]) %}
+				<th>{{song[5]}}</th>
+				{% endif %}
+
+		</tr>
+		{% endfor %}
+
+	</table>
+
+	<br/>
+	<br/>
+	Back to <a href="/top_songs/{{country}}/compare">Previous Page</a>
 </body>
 </html>
