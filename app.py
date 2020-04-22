@@ -291,7 +291,7 @@ def like_dislike_comment_comp():
 		dislike_list.append(i[3])
 		comment_list.append(i[4])
 	
-	fig = px.scatter_3d(x=like_list, y=dislike_list, z=comment_list, color=country_list, title = "like vs dislike counts across different countries")
+	fig = px.scatter_3d(x=like_list, y=dislike_list, z=comment_list, color=country_list, title = "like, dislike and comment counts across different countries")
 	fig.update_layout(scene=dict(
 		xaxis_title="like",
 		yaxis_title="dislike",
