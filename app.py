@@ -2,6 +2,7 @@
 from flask import Flask, render_template, request
 import sqlite3
 import plotly.graph_objects as go
+import plotly.express as px
 
 app = Flask(__name__)
 
@@ -108,6 +109,15 @@ def get_song_comment(id_list):
 	results = connect_db(q)
 	return results
 
+def country_like_dislike():
+	q = f'''
+	SELECT v.id, c.Countries, v.likes, v.dislikes
+	FROM Videos as v
+	JOIN Countries as c
+	ON v.countryId = c.id
+	'''
+	results = connect_db(q)
+	return results
 
 @app.route('/')
 def index():
@@ -227,6 +237,25 @@ def song_compare_handle_form(country):
 		return render_template('top_songs_compare_results_plot.html', country=country, plot_div_1 = div_1, plot_div_2 = div_2, plot_div_3 = div_3, plot_div_4 = div_4)
 	else:
 		return render_template('top_songs_compare_results.html', country=country, song_stats=songs_stats ,check_view = check_view, check_like = check_like, check_dislike = check_dislike, check_comment = check_comment)
+
+@app.route('/like_dislike_compare')
+def like_dislike_comp():
+	results = country_like_dislike()
+	like_list = []
+	dislike_list = []
+	country_list = []
+	for i in results:
+		country_list.append(i[1])
+		like_list.append(i[2])
+		dislike_list.append(i[3])
+	
+	fig = px.scatter(x=like_list, y=dislike_list, color=country_list, title = "like vs dislike counts across different countries")
+	div = fig.to_html(full_html=False)
+	return render_template('like_dislike_comp.html', plot_div = div)
+@app.route('/view_compare')
+def view_comp():
+	return render_template()
+
 
 if __name__ == '__main__':
 	app.run(debug=True)

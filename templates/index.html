@@ -7,15 +7,23 @@
 </head>
 
 <body>
-	<h3>Hello! This is a simple app to let you see what songs are trending in different countries.</h3>
-	<p>
-		Which country would you like to see? <br>
-		<ur>
-			{% for country in countries %}
-				<li><a href="/top_songs/{{country}}" > {{country}}</a></li>
-			{% endfor %}
-		</ur>
-	</p>
+	<h2>Hello! This is a simple app to let you see what songs are trending in different countries.</h2>
+	<div>
+		<h4>You can first compare data across different countries.</h4>
+		<a href="/like_dislike_compare">Compare like and dislike counts across different countries </a>
+		<a href="/view_compare">View the top 10 songs across the globe</a>
+
+	</div>
+	<div>
+		<p>
+			Which country would you like to see? <br>
+			<ur>
+				{% for country in countries %}
+					<li><a href="/top_songs/{{country}}" > {{country}}</a></li>
+				{% endfor %}
+			</ur>
+		</p>
+	</div>
 
 </body>
 </html>
