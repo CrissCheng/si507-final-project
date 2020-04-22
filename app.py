@@ -118,6 +118,28 @@ def country_like_dislike():
 	'''
 	results = connect_db(q)
 	return results
+def top_views():
+	q = f'''
+	SELECT DISTINCT v.title, v.views
+	FROM Videos as v
+	JOIN Countries as c
+	ON v.countryId = c.id
+	ORDER BY views DESC
+	LIMIT 10
+	'''
+	results = connect_db(q)
+	return results
+
+
+def like_dislike_comment():
+	q = f'''
+	SELECT v.id, c.Countries, v.likes, v.dislikes, v.comment_count
+	FROM Videos as v
+	JOIN Countries as c
+	ON v.countryId = c.id
+	'''
+	results = connect_db(q)
+	return results
 
 @app.route('/')
 def index():
@@ -249,12 +271,49 @@ def like_dislike_comp():
 		like_list.append(i[2])
 		dislike_list.append(i[3])
 	
-	fig = px.scatter(x=like_list, y=dislike_list, color=country_list, title = "like vs dislike counts across different countries")
+	fig = px.scatter(x=like_list, y=dislike_list, color=country_list, title = "like vs dislike counts across different countries", marginal_y="histogram", marginal_x="histogram")
+	fig.update_layout(
+		height =800
+		)
 	div = fig.to_html(full_html=False)
 	return render_template('like_dislike_comp.html', plot_div = div)
+
+@app.route('/like_dislike_comment_compare')
+def like_dislike_comment_comp():
+	results = like_dislike_comment()
+	like_list = []
+	dislike_list = []
+	comment_list = []
+	country_list = []
+	for i in results:
+		country_list.append(i[1])
+		like_list.append(i[2])
+		dislike_list.append(i[3])
+		comment_list.append(i[4])
+	
+	fig = px.scatter_3d(x=like_list, y=dislike_list, z=comment_list, color=country_list, title = "like vs dislike counts across different countries")
+	fig.update_layout(scene=dict(
+		xaxis_title="like",
+		yaxis_title="dislike",
+		zaxis_title="comment"),
+		height = 800
+		)
+	div = fig.to_html(full_html=False)
+	return render_template('like_dislike_comment_comp.html', plot_div = div)
+
 @app.route('/view_compare')
 def view_comp():
-	return render_template()
+	results = top_views()
+	title = []
+	view = []
+	
+	for i in results:
+		title.append(i[0])
+		view.append(i[1])
+	print(view)
+	fig = px.bar(x=title, y=view)
+	div = fig.to_html(full_html=False)
+	return render_template('views_compare.html', plot_div = div, title = "Top 10 viewed songs in the globe")
 
 
 if __name__ == '__main__':
